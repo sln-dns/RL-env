@@ -22,3 +22,16 @@ Setup instructions:
    ```
    uv run main.py
    ```
+
+## Execution Modes
+
+The test suite supports both concurrent and sequential execution. 
+
+To change modes, edit the `concurrent` parameter at the bottom of `main.py`:
+
+```python
+asyncio.run(main(concurrent=True))
+asyncio.run(main(concurrent=False))
+```
+
+When running concurrently, results print as they complete (not in run order) for faster overall execution.

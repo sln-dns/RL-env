@@ -1,9 +1,10 @@
+import asyncio
 import json
 from contextlib import redirect_stdout
 from io import StringIO
 from typing import Any, Callable, TypedDict
 
-from anthropic import Anthropic
+from anthropic import AsyncAnthropic
 from anthropic.types import MessageParam, ToolUnionParam
 
 
@@ -41,10 +42,10 @@ def submit_answer_tool(answer: Any) -> SubmitAnswerToolResult:
     return {"answer": answer, "submitted": True}
 
 
-def run_agent_loop(
+async def run_agent_loop(
     prompt: str,
     tools: list[ToolUnionParam],
-    tool_handlers: dict[str, Callable],
+    tool_handlers: dict[str, Callable[..., Any]],
     max_steps: int = 5,
     model: str = "claude-3-5-haiku-latest",
     verbose: bool = True,
@@ -63,14 +64,14 @@ def run_agent_loop(
     Returns:
         The submitted answer if submit_answer was called, otherwise None
     """
-    client = Anthropic()
+    client = AsyncAnthropic()
     messages: list[MessageParam] = [{"role": "user", "content": prompt}]
 
     for step in range(max_steps):
         if verbose:
             print(f"\n=== Step {step + 1}/{max_steps} ===")
 
-        response = client.messages.create(
+        response = await client.messages.create(
             model=model, max_tokens=1000, tools=tools, messages=messages
         )
 
@@ -155,7 +156,37 @@ def run_agent_loop(
     return None
 
 
-def main():
+async def run_single_test(
+    run_id: int,
+    num_runs: int,
+    prompt: str,
+    tools: list[ToolUnionParam],
+    tool_handlers: dict[str, Callable[..., Any]],
+    expected_answer: Any,
+    verbose: bool = False,
+) -> tuple[int, bool, Any]:
+    if verbose:
+        print(f"\n\n{'=' * 20} RUN {run_id}/{num_runs} {'=' * 20}")
+
+    result = await run_agent_loop(
+        prompt=prompt,
+        tools=tools,
+        tool_handlers=tool_handlers,
+        max_steps=5,
+        verbose=verbose,
+    )
+
+    success = result == expected_answer
+
+    if success:
+        print(f"✓ Run {run_id}: SUCCESS - Got {result}")
+    else:
+        print(f"✗ Run {run_id}: FAILURE - Got {result}, expected {expected_answer}")
+
+    return run_id, success, result
+
+
+async def main(concurrent: bool = True):
     tools: list[ToolUnionParam] = [
         {
             "name": "python_expression",
@@ -190,27 +221,42 @@ def main():
     # Run the test 10 times and track success rate
     num_runs = 10
     expected_answer = 8769
-    successes = 0
+    prompt = "Calculate (2^10 + 3^5) * 7 - 100. Use the python_expression tool and then submit the answer."
 
-    print(f"Running {num_runs} test iterations...")
+    execution_mode = "concurrently" if concurrent else "sequentially"
+    print(f"Running {num_runs} test iterations {execution_mode}...")
     print("=" * 60)
 
-    for i in range(num_runs):
-        print(f"\n\n{'=' * 20} RUN {i + 1}/{num_runs} {'=' * 20}")
-
-        result = run_agent_loop(
-            prompt="Calculate (2^10 + 3^5) * 7 - 100. Use the python_expression tool and then submit the answer.",
+    # Create all test coroutines
+    tasks = [
+        run_single_test(
+            run_id=i + 1,
+            num_runs=num_runs,
+            prompt=prompt,
             tools=tools,
             tool_handlers=tool_handlers,
-            max_steps=5,
-            verbose=False,  # Set to False for cleaner output during multiple runs
+            expected_answer=expected_answer,
+            verbose=False,
         )
+        for i in range(num_runs)
+    ]
 
-        if result == expected_answer:
-            print(f"✓ Run {i + 1}: SUCCESS - Got {result}")
-            successes += 1
-        else:
-            print(f"✗ Run {i + 1}: FAILURE - Got {result}, expected {expected_answer}")
+    # Run concurrently or sequentially based on the flag
+    if concurrent:
+        # Process results as they complete
+        results = []
+        for coro in asyncio.as_completed(tasks):
+            result = await coro
+            results.append(result)
+    else:
+        # Run sequentially by awaiting each task in order
+        results = []
+        for task in tasks:
+            result = await task
+            results.append(result)
+
+    # Count successes
+    successes = sum(1 for _, success, _ in results)
 
     # Calculate and display pass rate
     pass_rate = (successes / num_runs) * 100
@@ -223,4 +269,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # Set to True for concurrent execution, False for sequential execution
+    asyncio.run(main(concurrent=True))
