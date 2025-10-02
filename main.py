@@ -20,7 +20,8 @@ class SubmitAnswerToolResult(TypedDict):
 
 def python_expression_tool(expression: str) -> PythonExpressionToolResult:
     """
-    Tool that evaluates Python expressions using eval.
+    Tool that evaluates Python expressions using exec.
+    Use print(...) to emit output; stdout will be captured and returned.
     """
     try:
         # Make common modules available
@@ -42,6 +43,8 @@ def python_expression_tool(expression: str) -> PythonExpressionToolResult:
             "tuple": tuple,
             "set": set,
             "print": print,
+            "sorted": sorted,
+            "pow": pow,
         }
         stdout = StringIO()
         with redirect_stdout(stdout):
