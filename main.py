@@ -1,5 +1,4 @@
 import json
-import math
 from contextlib import redirect_stdout
 from io import StringIO
 from typing import Any, Callable, TypedDict
@@ -24,31 +23,10 @@ def python_expression_tool(expression: str) -> PythonExpressionToolResult:
     Use print(...) to emit output; stdout will be captured and returned.
     """
     try:
-        # Make common modules available
-        safe_globals = {
-            "__builtins__": {},
-            "math": math,
-            "abs": abs,
-            "min": min,
-            "max": max,
-            "sum": sum,
-            "len": len,
-            "range": range,
-            "round": round,
-            "int": int,
-            "float": float,
-            "str": str,
-            "list": list,
-            "dict": dict,
-            "tuple": tuple,
-            "set": set,
-            "print": print,
-            "sorted": sorted,
-            "pow": pow,
-        }
+        namespace = {}
         stdout = StringIO()
         with redirect_stdout(stdout):
-            exec(expression, safe_globals, {})
+            exec(expression, namespace, namespace)
         return {"result": stdout.getvalue(), "error": None}
     except KeyboardInterrupt:
         raise
