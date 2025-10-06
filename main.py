@@ -46,7 +46,7 @@ async def run_agent_loop(
     prompt: str,
     tools: list[ToolUnionParam],
     tool_handlers: dict[str, Callable[..., Any]],
-    max_steps: int = 5,
+    max_steps: int = 20,
     model: str = "claude-3-5-haiku-latest",
     verbose: bool = True,
 ) -> Any | None:
