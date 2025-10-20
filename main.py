@@ -1,11 +1,14 @@
 import asyncio
 import json
+from collections.abc import Callable
 from contextlib import redirect_stdout
 from io import StringIO
-from typing import Any, Callable, TypedDict
+from typing import Any, TypedDict
 
 from anthropic import AsyncAnthropic
 from anthropic.types import MessageParam, ToolUnionParam
+
+MAX_TOKENS = 1000
 
 
 class PythonExpressionToolResult(TypedDict):
@@ -72,8 +75,18 @@ async def run_agent_loop(
             print(f"\n=== Step {step + 1}/{max_steps} ===")
 
         response = await client.messages.create(
-            model=model, max_tokens=1000, tools=tools, messages=messages
+            model=model, max_tokens=MAX_TOKENS, tools=tools, messages=messages
         )
+
+        assert response.stop_reason in ["max_tokens", "tool_use", "end_turn"], (
+            f"unsupported stop_reason {response.stop_reason}"
+        )
+        if response.stop_reason == "max_tokens":
+            print(
+                f"Model reached max_tokens limit {MAX_TOKENS}. Increase "
+                "MAX_TOKENS, simplify your task, or update the code to provide "
+                "a message back to the model when it exceeds MAX_TOKENS."
+            )
 
         # Track if we need to continue
         has_tool_use = False
