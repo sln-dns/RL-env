@@ -269,7 +269,7 @@ async def main(concurrent: bool = True):
             results.append(result)
 
     # Count successes
-    successes = sum(1 for _, success, _ in results)
+    successes = sum(success for _, success, _ in results)
 
     # Calculate and display pass rate
     pass_rate = (successes / num_runs) * 100
