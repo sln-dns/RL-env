@@ -137,9 +137,9 @@ def _generate_test_cases(rng: np.random.Generator) -> List[TestCase]:
        
         # Additional tests for very long vectors (8192)
     dim = 8192
-    for batch in [1, 32]:  # Только для batch 1 и 32
-        for sigma in [10.0, 100.0]:  # Только для более экстремальных сигм
-            for shift in [0, 500]:  # Только для некоторых сдвигов
+    for batch in [1, 32]:  # only for batch=1 and batch=32
+        for sigma in [10.0, 100.0]:  # Only for extremal sigmas
+            for shift in [0, 500]:  # Only for certain shifts
                 for dtype_str in ["float32", "float16"]:
                     dtype = getattr(np, dtype_str)
                     rtol = 1e-3 if dtype == np.float32 else 8e-3
@@ -151,7 +151,7 @@ def _generate_test_cases(rng: np.random.Generator) -> List[TestCase]:
                         x = rng.normal(shift, sigma, size=(batch, dim)).astype(dtype)
                     
                     expected = _reference_log_softmax(x)
-                    is_visible = False  # Все скрытые - это сложные тесты
+                    is_visible = False  # All hidden - these are hard tests
                     
                     test_cases.append(TestCase(
                         name=f"log_softmax_dim{dim}_batch{batch}_σ{sigma}_shift{shift}_{dtype_str}",

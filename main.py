@@ -260,7 +260,7 @@ def cross_entropy(logits: np.ndarray, target_idx: np.ndarray | int) -> np.ndarra
 
         return run_id, success, result
     except Exception as e:
-        # Если агент упал с ошибкой, считаем как failed
+        # If an error occurs, mark the run as failed
         print(f"✗ Run {run_id}: ERROR - {type(e).__name__}: {str(e)}")
         return run_id, False, None
 
@@ -375,7 +375,7 @@ async def main(concurrent: bool = True):
                 result = await coro
                 results.append(result)
             except Exception as e:
-                # Если задача упала, добавляем как failed
+                # If an error occurs, mark the run as failed
                 print(f"✗ Task failed with error: {type(e).__name__}: {str(e)}")
                 pass
     else:
