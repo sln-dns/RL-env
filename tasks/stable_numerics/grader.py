@@ -121,7 +121,7 @@ def _generate_test_cases(rng: np.random.Generator) -> List[TestCase]:
                                 x_const = np.full((batch, dim), shift, dtype=dtype) + rng.normal(0, 1e-12, size=(batch, dim)).astype(dtype)
                             
                             expected_const = _reference_log_softmax(x_const)
-                            is_visible = case_id % 10 < 3
+                            is_visible = case_id % 10 < 1
                             
                             test_cases.append(TestCase(
                                 name=f"log_softmax_const_dim{dim}_batch{batch}_{dtype_str}",
@@ -179,8 +179,8 @@ def _generate_test_cases(rng: np.random.Generator) -> List[TestCase]:
                     logits_1d = rng.normal(0, sigma, size=(dim,)).astype(dtype)
                     target_1d = rng.integers(0, dim)
                     expected_1d = _reference_cross_entropy(logits_1d, target_1d)
-                    
-                    is_visible = case_id % 10 < 3
+
+                    is_visible = case_id % 10 < 1
                     test_cases.append(TestCase(
                         name=f"cross_entropy_1d_dim{dim}_σ{sigma}_{dtype_str}",
                         func="cross_entropy",
@@ -198,7 +198,7 @@ def _generate_test_cases(rng: np.random.Generator) -> List[TestCase]:
                     targets_2d = rng.integers(0, dim, size=(batch,))
                     expected_2d = _reference_cross_entropy(logits_2d, targets_2d)
                     
-                    is_visible = case_id % 10 < 3
+                    is_visible = case_id % 10 < 1
                     test_cases.append(TestCase(
                         name=f"cross_entropy_2d_dim{dim}_batch{batch}_σ{sigma}_{dtype_str}",
                         func="cross_entropy",
