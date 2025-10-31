@@ -83,10 +83,10 @@ def _generate_test_cases(rng: np.random.Generator) -> List[TestCase]:
     for dim in dims:
         for batch in batches if dim >= 8 else [1]:
             for sigma in sigmas:
-                for shift in [0, 500, -500]:
+                for shift in [0, 500, -500, 800, -800, 1000, -1000]:
                     for dtype_str in ["float32", "float16"]:
                         dtype = getattr(np, dtype_str)
-                        rtol = 1e-3 if dtype == np.float32 else 1e-2
+                        rtol = 1e-3 if dtype == np.float32 else 8e-3
                         atol = 1e-4 if dtype == np.float32 else 1e-3
                         
                         # Generate input
@@ -99,7 +99,7 @@ def _generate_test_cases(rng: np.random.Generator) -> List[TestCase]:
                         expected = _reference_log_softmax(x)
                         
                         # Decide visibility: ~20% visible, 80% hidden
-                        is_visible = case_id % 10 < 2
+                        is_visible = case_id % 10 < 1
                         
                         test_cases.append(TestCase(
                             name=f"log_softmax_dim{dim}_batch{batch}_σ{sigma}_shift{shift}_{dtype_str}",
@@ -134,14 +134,45 @@ def _generate_test_cases(rng: np.random.Generator) -> List[TestCase]:
                                 is_visible=is_visible,
                             ))
                             case_id += 1
-    
+       
+        # Additional tests for very long vectors (8192)
+    dim = 8192
+    for batch in [1, 32]:  # Только для batch 1 и 32
+        for sigma in [10.0, 100.0]:  # Только для более экстремальных сигм
+            for shift in [0, 500]:  # Только для некоторых сдвигов
+                for dtype_str in ["float32", "float16"]:
+                    dtype = getattr(np, dtype_str)
+                    rtol = 1e-3 if dtype == np.float32 else 8e-3
+                    atol = 1e-4 if dtype == np.float32 else 1e-3
+                    
+                    if batch == 1:
+                        x = rng.normal(shift, sigma, size=(dim,)).astype(dtype)
+                    else:
+                        x = rng.normal(shift, sigma, size=(batch, dim)).astype(dtype)
+                    
+                    expected = _reference_log_softmax(x)
+                    is_visible = False  # Все скрытые - это сложные тесты
+                    
+                    test_cases.append(TestCase(
+                        name=f"log_softmax_dim{dim}_batch{batch}_σ{sigma}_shift{shift}_{dtype_str}",
+                        func="log_softmax",
+                        input_data={"x": x},
+                        expected_result=expected,
+                        dtype=dtype,
+                        rtol=rtol,
+                        atol=atol,
+                        is_visible=is_visible,
+                    ))
+                    case_id += 1
+
+
     # Cross-entropy tests
-    for dim in [8, 64, 512]:
+    for dim in [8, 64, 512, 2048, 4096]:
         for batch in batches:
             for sigma in sigmas:
                 for dtype_str in ["float32", "float16"]:
                     dtype = getattr(np, dtype_str)
-                    rtol = 1e-3 if dtype == np.float32 else 1e-2
+                    rtol = 1e-3 if dtype == np.float32 else 8e-3
                     atol = 1e-4 if dtype == np.float32 else 1e-3
                     
                     # 1D case

@@ -13,7 +13,7 @@ from anthropic.types import MessageParam, ToolUnionParam
 from tasks.stable_numerics.tools import write_file_handler, run_tests_handler
 from tasks.stable_numerics.grader import grade_submission
 
-MAX_TOKENS = 1000
+MAX_TOKENS = 3000
 
 
 class PythonExpressionToolResult(TypedDict):

@@ -11,12 +11,12 @@ You must implement two functions:
    - Requirements:
      - Must not produce NaN/Inf on extreme inputs (|x| up to ~1000, identical or near-identical values, long vectors up to 4096 dimensions).
      - Must match high-precision reference (float64) accuracy: rtol≤1e-3, atol≤1e-4 for float32; rtol≤1e-2, atol≤1e-3 for float16.
-     - Multiple stable approaches are acceptable: subtracting x.max(axis=...), using logsumexp, or any equivalent transformation.
+     - Multiple stable approaches are acceptable.
 
 2. **`cross_entropy(logits: np.ndarray, target_idx: np.ndarray | int) -> np.ndarray | float`**
    - Input: logits as 1D or 2D array (batch, dim); target as int (for 1D logits) or 1D array of indices (for 2D logits).
    - Requirements:
-     - Must compute CE through log-domain (or equivalently stable method).
+     - Must avoid numerical overflow and ubderflow.
      - Same accuracy tolerances and no NaN/Inf as above.
      - For 2D logits, you may return either a scalar (averaged over batch) or an array (per-sample losses). The grader accepts both.
 
@@ -45,8 +45,4 @@ The test suite includes:
 2. Test your implementation with `run_tests("visible")` during development.
 3. Once confident, run `run_tests("full")` for final verification.
 4. If `run_tests("full")` returns `passed: true`, call `submit_answer("OK")`.
-
-## Hint
-
-Consider using stable transformations to shift values before exponentiation to avoid numerical overflow/underflow. Directly computing `exp(x)` for large x values can lead to numerical instability.
 
