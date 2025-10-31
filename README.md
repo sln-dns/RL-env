@@ -1,27 +1,33 @@
-hello-py
-===
+# RL-env
 
-Setup instructions:
+RL task for testing LLM capabilities on numerically stable implementations.
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/preferencemodel/hello-py.git
-   ```
+## Setup
 
-2. Navigate to the project directory:
-   ```
-   cd hello-py
-   ```
-
-3. Set up `ANTHROPIC_API_KEY` environment variable:
-   ```
+1. Set up `ANTHROPIC_API_KEY` environment variable:
+   ```bash
    export ANTHROPIC_API_KEY=your_api_key_here
    ```
 
-4. Run the agent:
+2. Install dependencies:
+   ```bash
+   uv sync
    ```
+
+3. Run the task:
+   ```bash
    uv run main.py
    ```
+
+The script will run the task multiple times (default: 10 runs) with different seeds and report the pass rate.
+
+## API Configuration
+
+```bash
+export API_PROVIDER=anthropic
+export ANTHROPIC_API_KEY=your_api_key_here
+uv run main.py
+```
 
 ## Execution Modes
 
