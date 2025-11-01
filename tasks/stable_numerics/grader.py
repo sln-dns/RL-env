@@ -67,7 +67,8 @@ def _choose_profile_from_env() -> DifficultyProfile:
             allow_forder_and_neg_strides=True,
         )
 
-    # mixed: 70% шанса включить hard-профиль; иначе близко к easy
+    #mixed: 70% chance to enable hard profile; otherwise close to easy
+    
     if rng.random() < 0.70:
         return DifficultyProfile(
             name="mixed-hard",
@@ -138,8 +139,8 @@ def _check_extra_hidden(
     allow_forder_and_neg: bool,
 ) -> List[str]:
     """
-    Дополнительные проверки для отлова "почти правильных" решений.
-    Возвращает список проблем (пусто => всё ок).
+    Additional checks to catch “almost correct” solutions.
+    Returns a list of problems (empty => everything is ok).
     """
     problems: List[str] = []
     dtype = logits.dtype
@@ -148,22 +149,22 @@ def _check_extra_hidden(
 
     # 1) finite
     if not np.isfinite(y_logsm).all():
-        problems.append("log_softmax содержит не-конечные значения")
+        problems.append("llog_softmax contains non-final values")
 
     # 2) dtype preserve (в строгом режиме обязательно; иначе — soft)
     if y_logsm.dtype != dtype:
         if strict:
-            problems.append(f"log_softmax меняет dtype: {y_logsm.dtype} != {dtype}")
+            problems.append(f"log_softmax changes dtype: {y_logsm.dtype} != {dtype}")
         else:
             # мягко: позволим fp16->fp32, но не иные преобразования
             if not (dtype == np.float16 and y_logsm.dtype == np.float32):
-                problems.append(f"log_softmax меняет dtype (мягкая проверка): {y_logsm.dtype} != {dtype}")
+                problems.append(f"log_softmax changes dtype (soft check): {y_logsm.dtype} != {dtype}")
 
     # 3) no-mutation
     _before = logits.copy(order="K")
     _ = user_impl.log_softmax(logits)
     if not np.array_equal(logits, _before):
-        problems.append("входные logits мутируются in-place")
+        problems.append("input logits are mutated in-place")
 
     # 4) shift invariance: константа меньше для fp16
     c_value = 20.0 if dtype == np.float16 else 100.0
@@ -172,24 +173,24 @@ def _check_extra_hidden(
         y_shift = user_impl.log_softmax(logits + c)
         if not np.allclose(y_logsm.astype(np.float64), y_shift.astype(np.float64),
                            rtol=tol["rtol"], atol=tol["atol"]):
-            problems.append("нарушена инвариантность к добавлению константы")
+            problems.append("invariance to adding a constant is broken")
     except Exception as e:
-        problems.append(f"ошибка при проверке инвариантности: {e}")
+        problems.append(f"error when checking invariance: {e}")
 
     # 5) normalization
     try:
         s = np.sum(np.exp(y_logsm.astype(np.float64)), axis=axis, keepdims=True)
         if not np.allclose(s, 1.0, rtol=tol["sum_rtol"], atol=tol["sum_atol"]):
-            problems.append("exp(log_softmax) не суммируется в 1 по оси классов")
+            problems.append("exp(log_softmax) does not sum to 1 on the class axis")
     except Exception as e:
-        problems.append(f"ошибка при проверке нормировки: {e}")
+        problems.append(f"error when checking normalization: {e}")
 
     # 6) CE equivalence
     try:
         if logits.ndim == 1:
             ce = user_impl.cross_entropy(logits, int(target_idx))
             if isinstance(ce, np.ndarray):
-                problems.append("cross_entropy(1D) должен возвращать скаляр")
+                problems.append("cross_entropy(1D) should return a scalar")
             else:
                 ref = -y_logsm[int(target_idx)].astype(np.float64)
                 if not np.allclose(float(ce), float(ref), rtol=tol["rtol"], atol=tol["atol"]):
@@ -201,17 +202,17 @@ def _check_extra_hidden(
 
             if isinstance(ce, np.ndarray):
                 if ce.shape != (logits.shape[0],):
-                    problems.append(f"cross_entropy(2D) неверная форма: {ce.shape}")
+                    problems.append(f"cross_entropy(2D) wrong shape: {ce.shape}")
                 else:
                     if not np.allclose(ce.astype(np.float64), ref_vec,
                                        rtol=tol["rtol"], atol=tol["atol"]):
-                        problems.append("cross_entropy per-sample отклоняется от -log_softmax")
+                        problems.append("cross_entropy per-sample deviates from -log_softmax")
             else:
                 ref_mean = float(np.mean(ref_vec))
                 if not np.allclose(float(ce), ref_mean, rtol=tol["rtol"], atol=tol["atol"]):
-                    problems.append("cross_entropy скаляр != среднему per-sample")
+                    problems.append("cross_entropy scalar != mean per-sample")
     except Exception as e:
-        problems.append(f"ошибка при проверке cross_entropy: {e}")
+        problems.append(f"error when checking cross_entropy: {e}")
 
     # 7) F-order / negative strides (только если разрешено)
     if allow_forder_and_neg and logits.ndim >= 1:
@@ -220,15 +221,15 @@ def _check_extra_hidden(
             lf = np.asfortranarray(logits)
             y_f = user_impl.log_softmax(lf)
             if not np.isfinite(y_f).all():
-                problems.append("log_softmax(F-order) вернул не-конечные значения")
+                problems.append("log_softmax(F-order) returned non-finite values")
 
             # Negative strides via slicing
             ln = logits[..., ::-1]
             y_n = user_impl.log_softmax(ln)
             if not np.isfinite(y_n).all():
-                problems.append("log_softmax(negative-strides) вернул не-конечные значения")
+                problems.append("log_softmax(negative-strides) returned non-finite values")
         except Exception as e:
-            problems.append(f"ошибка F-order/neg-strides: {e}")
+            problems.append(f"error F-order/neg-strides: {e}")
 
     return problems
 
@@ -369,7 +370,7 @@ def _generate_test_cases(rng: np.random.Generator, profile: DifficultyProfile) -
 
         # 2D
         if batch == 1:
-            batch_use = 7  # чтобы был смысл 2D
+            batch_use = 7  # to make sense of 2D
         else:
             batch_use = batch
 
@@ -443,7 +444,7 @@ def _run_test_case(test_case: TestCase, user_impl, profile: DifficultyProfile) -
                     max_diff = float(np.max(np.abs(result.astype(np.float64) - test_case.expected_result.astype(np.float64))))
                     return False, f"Accuracy mismatch: max diff {max_diff:.6f}"
 
-            # Extra hidden checks — применяем только на hidden
+            # Extra hidden checks — apply only to hidden
             if not test_case.is_visible:
                 if test_case.func == "log_softmax":
                     logits = test_case.input_data["x"]
@@ -463,9 +464,9 @@ def _run_test_case(test_case: TestCase, user_impl, profile: DifficultyProfile) -
                     )
                     if extra and profile.use_strict_hidden_checks:
                         return False, f"Extra checks failed: {'; '.join(extra)}"
-                    # В нестрогом профиле — только критические ошибки будут отловлены раньше; здесь мягко игнорируем extra
+                    # In non-strict profile — only critical errors will be caught earlier; here we softly ignore extra
                 else:
-                    # CE: вызываем log_softmax и прогоняем те же проверки
+                    # CE: call log_softmax and run the same checks
                     logits = test_case.input_data["logits"]
                     try:
                         y_logsm = user_impl.log_softmax(logits)
