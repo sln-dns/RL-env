@@ -6,6 +6,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Any, TypedDict
 
+
 from anthropic import AsyncAnthropic
 from anthropic.types import MessageParam, ToolUnionParam
 
@@ -13,7 +14,7 @@ from anthropic.types import MessageParam, ToolUnionParam
 from tasks.stable_numerics.tools import write_file_handler, run_tests_handler
 from tasks.stable_numerics.grader import grade_submission
 
-MAX_TOKENS = 3000
+MAX_TOKENS = 2000
 
 
 class PythonExpressionToolResult(TypedDict):
@@ -54,7 +55,7 @@ async def run_agent_loop(
     prompt: str,
     tools: list[ToolUnionParam],
     tool_handlers: dict[str, Callable[..., Any]],
-    max_steps: int = 20,
+    max_steps: int = 10,
     model: str = "claude-haiku-4-5",
     verbose: bool = True,
 ) -> Any | None:
@@ -244,7 +245,7 @@ def cross_entropy(logits: np.ndarray, target_idx: np.ndarray | int) -> np.ndarra
             prompt=prompt,
             tools=tools,
             tool_handlers=tool_handlers,
-            max_steps=20,  # Increased for more complex task
+            max_steps=10,  # Increased for more complex task
             verbose=verbose,
         )
 
